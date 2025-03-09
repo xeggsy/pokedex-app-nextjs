@@ -23,88 +23,32 @@ const getPokemonIdFromUrl = (url) => {
   return pokemonId;
 };
 
-// Returns a 2D array where each entry is an array of
-// the IDs of the Pokemon corresponding to that stage of evolution
-// Maximum of 3 stages so the outer array has at most 3 entries
+
 const getPokemonEvolutions = async (url) => {
   const evolutions = [];
   const response = await axios.get(url);
   let evoData = response.data.chain;
-
-  // do {
-  //   let numberOfEvolutions = evoData.evolves_to.length;
-  //   let evoDetails = evoData.evolution_details[0];
-
-  //   evolutions.push([
-  //     {
-  //       id: getPokemonIdFromUrl(evoData.species.url),
-  //       species_name: evoData.species.name,
-  //       min_level: !evoDetails ? 1 : evoDetails.min_level,
-  //       trigger_name: !evoDetails ? null : evoDetails.trigger.name,
-  //       item: !evoDetails ? null : evoDetails.item,
-  //       min_happiness: !evoDetails ? null : evoDetails.min_happiness,
-  //       time_of_day: !evoDetails ? null : evoDetails.time_of_day,
-  //       known_move: !evoDetails ? null : evoDetails.known_move,
-  //       known_move_type: !evoDetails ? null : evoDetails.known_move_type,
-  //     },
-  //   ]);
-
-  //   if (numberOfEvolutions > 1) {
-  //     for (let i = 1; i < numberOfEvolutions; i++) {
-  //       evoDetails =
-  //         evoData.evolves_to[i].species.name === "glaceon" ||
-  //         evoData.evolves_to[i].species.name === "leafeon"
-  //           ? evoData.evolves_to[i].evolution_details[4]
-  //           : evoData.evolves_to[i].evolution_details[0];
-  //       evolutions.push([
-  //         {
-  //           id: getPokemonIdFromUrl(evoData.evolves_to[i].species.url),
-  //           species_name: evoData.evolves_to[i].species.name,
-  //           min_level: !evoDetails ? 1 : evoDetails.min_level,
-  //           trigger_name: !evoDetails ? null : evoDetails.trigger.name,
-  //           item: !evoDetails ? null : evoDetails.item,
-  //           min_happiness: !evoDetails ? null : evoDetails.min_happiness,
-  //           time_of_day: !evoDetails ? null : evoDetails.time_of_day,
-  //           known_move: !evoDetails ? null : evoDetails.known_move,
-  //           known_move_type: !evoDetails ? null : evoDetails.known_move_type,
-  //         },
-  //       ]);
-  //     }
-  //   }
-
-  //   evoData = evoData.evolves_to[0];
-  // } while (evoData != undefined && evoData.hasOwnProperty("evolves_to"));
-
+  
   const traverseEvolutionTree = (node, level) => {
-    // let numberOfEvolutions = node.evolves_to.length;
-    let evoDetails = node.evolution_details[0];
-
-    evoDetails =
-      node.species.name === "glaceon" || node.species.name === "leafeon"
-        ? node.evolution_details[4]
-        : node.evolution_details[0];
-    if (evolutions[level] === undefined) evolutions[level] = [];
+    // Is this even needed? Can't this be rendered immediately?
     evolutions[level].push({
       id: getPokemonIdFromUrl(node.species.url),
       species_name: node.species.name,
-      min_level: !evoDetails ? 1 : evoDetails.min_level,
-      trigger_name: !evoDetails ? null : evoDetails.trigger.name,
-      item: !evoDetails ? null : evoDetails.item,
-      min_happiness: !evoDetails ? null : evoDetails.min_happiness,
-      time_of_day: !evoDetails ? null : evoDetails.time_of_day,
-      known_move: !evoDetails ? null : evoDetails.known_move,
-      known_move_type: !evoDetails ? null : evoDetails.known_move_type,
-      held_item: !evoDetails ? null : evoDetails.held_item,
-      location: !evoDetails ? null : evoDetails.location,
-      needs_overworld_rain: !evoDetails
-        ? null
-        : evoDetails.needs_overworld_rain,
+      min_level: node.evolution_details[0].min_level || 1, // Use the object directly instead of a const and with || rather than ternary
+      trigger_name: node.evolution_details[0].trigger.name || null,
+      item: node.evolution_details[0].item || null,
+      min_happiness: node.evolution_details[0].min_happiness || null,
+      time_of_day: node.evolution_details[0].time_of_day || null,
+      known_move: node.evolution_details[0].known_move || null,
+      known_move_type: node.evolution_details[0].known_move_type || null,
+      held_item: node.evolution_details[0].held_item || null,
+      location: node.evolution_details[0].location || null,
+      needs_overworld_rain: node.evolution_details[0].needs_overworld_rain || null // Don't end with comma's and keep style consistent
     });
     node.evolves_to.forEach((child) => traverseEvolutionTree(child, level + 1));
   };
 
   traverseEvolutionTree(evoData, 0);
-
   return evolutions;
 };
 
@@ -112,27 +56,8 @@ const formatPokemonName = (name) => {
   const hyphenExceptions = ['ho-oh', 'porygon-z', 'wo-chien', 'chien-pao', 'ting-lu'];
   const capitalizeFirstLetterExceptions = ['jangmo-o', 'kommo-o', 'hakamo-o'];
   const dotExceptions = ['mr-mime', 'mime-jr', 'mr-rime'];
-  
-  if (hyphenExceptions.includes(name.toLowerCase())) {
-    return name.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('-');
-  }
 
-  if (dotExceptions.includes(name.toLowerCase())) {
-    return name.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('. ');
-  }
-
-  if (name === 'type-null') {
-    return name.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(': ');
-  }
-
-  if (name === 'giratina-altered' || name === 'shaymin-land') {
-    return name.split('-')[0].charAt(0).toUpperCase() + name.split('-')[0].slice(1);
-  }
-
-  if (capitalizeFirstLetterExceptions.includes(name.toLowerCase())) {
-    return capitalizeFirstLetter(name);
-  }
-
+  // These can be collapsed into a single case. Why was this done anyway?
   return name
     .toLowerCase()
     .split("-")
